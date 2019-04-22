@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  name: alertmanager
+spec:
+  baseImage: prom/alertmanager
+  replicas: 3
+  # securityContext:
+  #   fsGroup: 2000
+  #   runAsNonRoot: true
+  #   runAsUser: 1000
+  serviceAccountName: prometheus
+  version: v0.16.2
+
+# oc create secret generic alertmanager-alertmanager --from-file=alertmanager.yaml
+
