@@ -70,49 +70,16 @@ objects:
 # OpenShift resources
 #
 
-- apiVersion: v1
-  kind: ServiceAccount
-  metadata:
-    name: prometheus
-    namespace: ${NAMESPACE}
-
-- apiVersion: rbac.authorization.k8s.io/v1
-  kind: Role
-  metadata:
-    namespace: ${NAMESPACE}
-    name: prometheus
-  rules:
-  - apiGroups: [""]
-    resources:
-    - nodes
-    - nodes/proxy
-    - services
-    - endpoints
-    - pods
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources:
-    - configmaps
-    verbs: ["get"]
-
-- apiVersion: rbac.authorization.k8s.io/v1beta1
-  kind: RoleBinding
-  metadata:
-    name: prometheus
-    namespace: ${NAMESPACE}
-  roleRef:
-    apiGroup: rbac.authorization.k8s.io
-    kind: Role
-    name: prometheus
-  subjects:
-  - kind: ServiceAccount
-    name: prometheus
-    namespace: ${NAMESPACE}
+# - apiVersion: v1
+#   kind: ServiceAccount
+#   metadata:
+#     name: prometheus
+#     namespace: ${NAMESPACE}
 
 - apiVersion: rbac.authorization.k8s.io/v1
   kind: ClusterRole
   metadata:
-    name: prometheus
+    name: prometheus-cluster-role
   rules:
   - apiGroups:
     - ''
@@ -143,40 +110,42 @@ objects:
     verbs:
     - get
 
-- apiVersion: rbac.authorization.k8s.io/v1
-  kind: ClusterRoleBinding
-  metadata:
-    name: prometheus
-  roleRef:
-    apiGroup: rbac.authorization.k8s.io
-    kind: ClusterRole
-    name: prometheus
-  subjects:
-  - kind: ServiceAccount
-    name: prometheus
-    namespace: ${NAMESPACE}
+# - apiVersion: rbac.authorization.k8s.io/v1
+#   kind: ClusterRoleBinding
+#   metadata:
+#     name: prometheus
+#   roleRef:
+#     apiGroup: rbac.authorization.k8s.io
+#     kind: ClusterRole
+#     name: prometheus
+#   subjects:
+#   - kind: ServiceAccount
+#     name: prometheus
+#     namespace: ${NAMESPACE}
 
 # Disabled a we need cluster wide access to fetch metrics
 
-# - apiVersion: rbac.authorization.k8s.io/v1
-#   kind: Role
-#   metadata:
-#     namespace: ${NAMESPACE}
-#     name: prometheus
-#   rules:
-#   - apiGroups: [""]
-#     resources:
-#     - nodes
-#     - nodes/proxy
-#     - services
-#     - endpoints
-#     - pods
-#     verbs: ["get", "list", "watch"]
-#   - apiGroups: [""]
-#     resources:
-#     - configmaps
-#     verbs: ["get"]
-#
+- apiVersion: rbac.authorization.k8s.io/v1
+   kind: Role
+   metadata:
+     namespace: ${NAMESPACE}
+     name: prometheus-role
+   rules:
+   - apiGroups: [""]
+     resources:
+     - nodes
+     - nodes/proxy
+     - services
+     - endpoints
+     - pods
+     verbs: ["get", "list", "watch"]
+   - apiGroups: [""]
+     resources:
+     - configmaps
+     verbs: ["get"]
+
+# Role bindings done by controller
+
 # - apiVersion: rbac.authorization.k8s.io/v1beta1
 #   kind: RoleBinding
 #   metadata:
@@ -191,73 +160,3 @@ objects:
 #     name: prometheus
 #     namespace: ${NAMESPACE}
 
-- apiVersion: monitoring.coreos.com/v1
-  kind: Alertmanager
-  metadata:
-    name: alertmanager
-    namespace: ${NAMESPACE}
-    spec:
-      # baseImage: containers.cisco.com/jaganaga/alertmanager
-      replicas: 3
-      serviceAccountName: prometheus
-      version: v0.16.1
-      # imagePullSecrets:
-      #   - name: cisco-cred-pull-secret
-
-# oc create secret generic alertmanager-alertmanager --from-file=alertmanager.yaml
-
-- apiVersion: monitoring.coreos.com/v1
-  kind: Prometheus
-  metadata:
-    name: prometheus
-    namespace: ${NAMESPACE}
-  spec:
-    # baseImage: containers.cisco.com/jaganaga/prometheus
-    securityContext: {}
-    serviceAccountName: prometheus
-    serviceMonitorSelector:
-      matchLabels:
-        team: ${KAFKA_SERVICE_TEAM}
-    resources:
-      requests:
-        memory: ${MEMORY_REQUEST}
-        cpu: ${CPU_REQUEST}
-      limits:
-        cpu: ${CPU_LIMIT}
-        memory: ${MEMORY_LIMIT}
-    alerting:
-      alertmanagers:
-      - namespace: kafka-1
-        name: alertmanager-operated
-        port: web
-    ruleSelector:
-      matchLabels:
-        team: ${KAFKA_SERVICE_TEAM}
-    additionalScrapeConfigs:
-      name: additional-scrape-configs
-      key: prometheus-additional.yml
-
-- apiVersion: v1
-  kind: Service
-  metadata:
-    name: prometheus
-    namespace: ${NAMESPACE}
-  spec:
-    type: NodePort
-    ports:
-    - name: ${PORT_NAME}
-      port: ${PROMETHEUS_SERVICE_PORT}
-      protocol: TCP
-      targetPort: ${PORT_NAME}
-    selector:
-      prometheus: prometheus
-
-- apiVersion: v1
-  kind: Route
-  metadata:
-    name: prometheus
-    namespace: ${NAMESPACE}
-  spec:
-    to:
-      kind: Service
-      name: prometheus

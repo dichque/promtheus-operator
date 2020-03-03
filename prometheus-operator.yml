@@ -26,7 +26,7 @@ parameters:
   description: The amount of CPU to request for each container.
 - name: MEMORY_REQUEST
   displayName: Memory request
-  value: '100Mi'
+  value: '1Gi'
   required: true
   description: The amount of memory required for each container to run.
 - name: CPU_LIMIT
@@ -36,7 +36,7 @@ parameters:
   description: The amount of CPU each container is limited to use.
 - name: MEMORY_LIMIT
   displayName: Memory limit
-  value: '200Mi'
+  value: '2Gi'
   required: true
   description: The amount of memory each container is limited to use.
 - name: CONTAINER_PORT
@@ -136,6 +136,7 @@ objects:
     - get
     - create
     - update
+    - delete
   - apiGroups:
     - ""
     resources:
@@ -214,20 +215,23 @@ objects:
           - --manage-crds=false
           # - --namespaces=${NAMESPACE}
           - --logtostderr=true
-          - --config-reloader-image=quay.io/coreos/configmap-reload:v0.0.1
-          - --prometheus-config-reloader=quay.io/coreos/prometheus-config-reloader:v0.26.0
-          image: quay.io/coreos/prometheus-operator:v0.26.0
+          - --config-reloader-image=containers.cisco.com/intps/configmap-reload:v0.0.1
+          - --prometheus-config-reloader=containers.cisco.com/intps/prometheus-config-reloader:v0.26.0
+          image: containers.cisco.com/intps/prometheus-operator:v0.26.0
+          imagePullPolicy: Always
           name: prometheus-operator
           ports:
           - containerPort: ${CONTAINER_PORT}
             name: http
           resources:
-            limits:
-              cpu: ${CPU_LIMIT}
-              memory: ${MEMORY_LIMIT}
-            requests:
-              cpu: ${CPU_REQUEST}
-              memory: ${MEMORY_REQUEST}
+             requests:
+               cpu: ${CPU_REQUEST}
+               memory: ${MEMORY_REQUEST}
+             limits:
+               cpu: ${CPU_LIMIT}
+               memory: ${MEMORY_LIMIT}
+        imagePullSecrets:
+          - name: intps-kafka-svc-pull-secret
         serviceAccountName: prometheus-operator
 
 - apiVersion: monitoring.coreos.com/v1
@@ -236,10 +240,14 @@ objects:
     name: alertmanager
     namespace: ${NAMESPACE}
   spec:
-    baseImage: prom/alertmanager
-    replicas: 1
+    baseImage: containers.cisco.com/intps/alertmanager
+    replicas: 3
     serviceAccountName: prometheus
     version: v0.16.2
+    resources: {}
+    imagePullSecrets:
+      - name: intps-kafka-svc-pull-secret
+
 
 # oc create secret generic alertmanager-alertmanager --from-file=alertmanager.yaml
 
